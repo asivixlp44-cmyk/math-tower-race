@@ -414,21 +414,47 @@ function buildScreen() {
     bm.position.set(0, y, z - 1.42); bm.rotation.y = Math.PI;
     ROOT.add(bm);
     // the floating logo above it, readable from both sides
-    const lc = document.createElement('canvas'); lc.width = 2048; lc.height = 420;
-    const lx = lc.getContext('2d');
-    lx.font = '700 230px Fredoka, sans-serif'; lx.textAlign = 'center'; lx.textBaseline = 'middle';
-    lx.lineJoin = 'round'; lx.lineWidth = 46; lx.strokeStyle = '#4a1430'; lx.strokeText('MATH TOWER RACE', 1024, 220);
-    const lg = lx.createLinearGradient(0, 100, 0, 340); lg.addColorStop(0, '#fff27a'); lg.addColorStop(0.5, '#ffb52a'); lg.addColorStop(1, '#ff6a1c');
-    lx.fillStyle = lg; lx.fillText('MATH TOWER RACE', 1024, 220);
-    lx.lineWidth = 6; lx.strokeStyle = 'rgba(255,255,255,0.6)'; lx.strokeText('MATH TOWER RACE', 1024, 212);
+    const lc = logoCanvas('MATH TOWER RACE');
     const logo = new T.Group();
     const logoMat = new T.MeshBasicMaterial({ map: texFrom(lc), transparent: true, toneMapped: false, depthWrite: false });
-    for (const ry of [0, Math.PI]) { const p = new T.Mesh(new T.PlaneGeometry(74, 15.2), logoMat); p.rotation.y = ry; logo.add(p); }
+    for (const ry of [0, Math.PI]) { const p = new T.Mesh(new T.PlaneGeometry(74, 74 * lc.height / lc.width), logoMat); p.rotation.y = ry; logo.add(p); }
     // it sits on the screen's top edge like a title, bobbing a little
     const ly = y + h / 2 + 8;
     logo.position.set(0, ly, z - 0.6);
     ROOT.add(logo);
     tickers.push((dt, t) => { logo.position.y = ly + Math.sin(t * 1.2) * 0.35; logo.rotation.z = Math.sin(t * 0.7) * 0.01; });
+}
+// The game logo: chunky cartoon letters with a dark 3D extrusion, a thick outline, a yellow-to-
+// orange fill and a glossy highlight kept inside the letters. Sized to always fit the canvas.
+function logoCanvas(text) {
+    const W = 2048, H = 480;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    let px = 240;
+    const font = (p) => `700 ${p}px Fredoka, "Arial Rounded MT Bold", sans-serif`;
+    x.font = font(px);
+    while (x.measureText(text).width > W - 200 && px > 40) { px -= 4; x.font = font(px); }
+    const cx = W / 2, cy = H / 2 - px * 0.06, ow = px * 0.19, depth = px * 0.09;
+    for (const g of [x]) { g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineCap = 'round'; }
+    // the extrusion: dark copies stepping down
+    x.fillStyle = '#3a0c22'; x.strokeStyle = '#3a0c22'; x.lineWidth = ow;
+    for (let d = depth; d > 0; d -= 3) { x.strokeText(text, cx, cy + d); x.fillText(text, cx, cy + d); }
+    // the outline
+    x.strokeStyle = '#4a1430'; x.lineWidth = ow; x.strokeText(text, cx, cy);
+    // the fill and the gloss, painted on their own layer so the gloss only lands inside the letters
+    const f = document.createElement('canvas'); f.width = W; f.height = H;
+    const fx = f.getContext('2d');
+    fx.font = font(px); fx.textAlign = 'center'; fx.textBaseline = 'middle';
+    const top = cy - px * 0.42, bot = cy + px * 0.42;
+    const g = fx.createLinearGradient(0, top, 0, bot);
+    g.addColorStop(0, '#fff7a8'); g.addColorStop(0.45, '#ffc93c'); g.addColorStop(1, '#ff7a1e');
+    fx.fillStyle = g; fx.fillText(text, cx, cy);
+    fx.globalCompositeOperation = 'source-atop';
+    const gl = fx.createLinearGradient(0, top, 0, cy);
+    gl.addColorStop(0, 'rgba(255,255,255,0.6)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+    fx.fillStyle = gl; fx.fillRect(0, top - 10, W, cy - top + 10);
+    x.drawImage(f, 0, 0);
+    return c;
 }
 // { header, timer, big, status, small, visual } -> redraws the screen when anything changed
 export function setScreen(o) {
