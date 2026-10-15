@@ -503,21 +503,38 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
-canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+// No browser menu anywhere in the game (it would swallow the mouse-up of a right-drag), except in
+// text fields
+addEventListener('contextmenu', (e) => { if (!(e.target && e.target.closest && e.target.closest('input, textarea'))) e.preventDefault(); });
 
+// Camera: drag with the left or right mouse button (or a finger) to look around
 const drags = new Map();
-canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); drags.set(e.pointerId, { x: e.clientX, y: e.clientY }); canvas.focus(); });
+canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 2) return;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
+    drags.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    canvas.focus();
+});
 canvas.addEventListener('pointermove', (e) => {
     const d = drags.get(e.pointerId);
     if (!d) return;
+    // the button came up somewhere we never heard about (a menu, another window): stop dragging
+    // instead of turning the camera with every mouse move
+    if (e.pointerType === 'mouse' && !(e.buttons & 3)) { drags.delete(e.pointerId); return; }
     const k = (e.pointerType === 'touch' ? 0.008 : 0.005) * camSens;
-    cam.yaw -= (e.clientX - d.x) * k;
-    cam.pitch = clamp(cam.pitch + (e.clientY - d.y) * k, -0.5, 1.4);
+    // one event can't turn the camera more than a little (a jump in the pointer position after a
+    // lost capture would otherwise flip it)
+    const dx = clamp(e.clientX - d.x, -120, 120), dy = clamp(e.clientY - d.y, -120, 120);
+    cam.yaw -= dx * k;
+    cam.pitch = clamp(cam.pitch + dy * k, -0.45, 1.25);
     d.x = e.clientX; d.y = e.clientY;
 });
 const endDrag = (e) => drags.delete(e.pointerId);
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('lostpointercapture', endDrag);
+addEventListener('blur', () => drags.clear());
+document.addEventListener('visibilitychange', () => { if (document.hidden) drags.clear(); });
 canvas.addEventListener('wheel', (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 3, 8, 110); e.preventDefault(); }, { passive: false });
 
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -744,7 +761,7 @@ function update(dt) {
     if (keys.KeyA || keys.ArrowLeft) r -= 1;
     f -= touchMove.y + pad.ly; r += touchMove.x + pad.lx;
     cam.yaw -= pad.rx * 2.8 * dt;
-    cam.pitch = clamp(cam.pitch + pad.ry * 1.8 * dt, -0.5, 1.4);
+    cam.pitch = clamp(cam.pitch + pad.ry * 1.8 * dt, -0.45, 1.25);
     tmpF.set(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
     tmpR.set(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw));
     mv.set(0, 0, 0).addScaledVector(tmpF, f).addScaledVector(tmpR, r);
