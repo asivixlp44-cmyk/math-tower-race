@@ -1,7 +1,7 @@
 // Pets: cute squishies that float after you, each built from a few shapes with a face.
 // Slimes (glossy blobs), mochi buns, gummy bears, peaches, clouds, stars, keycap cats and bunnies,
 // a frog, a space-bar dog and an RGB dragon. Merged into a couple of meshes each.
-import { glossyMat, T, mergeChildren } from './engine.js';
+import { glossyMat, T, mergeChildren, toLambert } from './engine.js';
 
 const S = (r, w, h) => new T.SphereGeometry(r, w || 24, h || 16);
 const matCache = new Map();
@@ -15,12 +15,12 @@ function petMat(def, kind) {
         else if (def.galaxy) m = glossyMat({ color: def.color, roughness: 0.2, clearcoat: 1, map: galaxyTex(), emissive: 0x2a1060, emissiveIntensity: 0.6 });
         else if (def.kind === 'slime' || def.clear) m = glossyMat({ color: def.color, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.86, envMapIntensity: 1.6 });
         else m = glossyMat({ color: def.color, roughness: 0.5, sheen: 1, sheenColor: new T.Color(0xffffff), sheenRoughness: 0.5 });
-    } else if (kind === 'eye') m = new T.MeshStandardMaterial({ color: 0x1a1420, roughness: 0.15 });
+    } else if (kind === 'eye') m = toLambert({ color: 0x1a1420, roughness: 0.15 });
     else if (kind === 'shine') m = new T.MeshBasicMaterial({ color: 0xffffff });
     else if (kind === 'blush') m = new T.MeshBasicMaterial({ color: 0xff7aa8, transparent: true, opacity: 0.75 });
-    else if (kind === 'leaf') m = new T.MeshStandardMaterial({ color: 0x46c83a, roughness: 0.5 });
+    else if (kind === 'leaf') m = toLambert({ color: 0x46c83a, roughness: 0.5 });
     else if (kind === 'gold') m = glossyMat({ color: 0xffc828, metalness: 0.85, roughness: 0.2, emissive: 0x6a4000, emissiveIntensity: 0.3 });
-    else m = new T.MeshStandardMaterial({ color: 0x1a1420 });
+    else m = toLambert({ color: 0x1a1420 });
     matCache.set(key, m);
     return m;
 }

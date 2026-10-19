@@ -19,14 +19,14 @@ const weakGpu = (() => {
         return /intel|uhd|iris|mali|adreno|powervr|swiftshader|llvmpipe|basic render|microsoft/i.test(name);
     } catch (e) { return false; }
 })();
-let quality = isTouch || weakGpu ? 'medium' : 'high', chosen = false;
+let quality = isTouch || weakGpu ? 'low' : 'medium', chosen = false;
 // Only the player's own choice is stored (v2: older builds also stored automatic step-downs, which
 // left some players stuck on Low for good)
 try { const q = localStorage.getItem('mtr_quality_v2'); if (q) { quality = q; chosen = true; } } catch (e) { /* default */ }
-if (!QUALITIES[quality]) quality = 'high';
+if (!QUALITIES[quality]) quality = 'medium';
 
-// The custom tone mapping is Neutral plus the cartoon grade (engine.js)
-renderer.toneMapping = T.CustomToneMapping;
+// No tone mapping or grade, like Bloxity's top games: colours go to the screen as lit
+renderer.toneMapping = T.NoToneMapping;
 renderer.toneMappingExposure = 1.0;
 
 // A soft vignette, drawn by the browser over the canvas (costs the GPU nothing per frame)

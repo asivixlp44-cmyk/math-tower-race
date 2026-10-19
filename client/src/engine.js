@@ -131,20 +131,17 @@ function skyRoom() {
     plane(0xfff0c8, 2.4, 4, 4, 6, 8, -6, Math.PI / 2);           // the sun
     return room;
 }
-{
-    const pm = new T.PMREMGenerator(renderer);
-    scene.environment = pm.fromScene(skyRoom(), 0.04).texture;
-    scene.environmentIntensity = 0.7;
-    pm.dispose();
-}
-export const hemi = new T.HemisphereLight(0xe8f8ff, 0x5a9a3a, 1.05);
-scene.add(hemi);
+// No environment map or reflections (like Bloxity's top games): matte materials lit by the sky
+// light, a little ambient and the sun
+// Lit like Bloxity's top games: sky / ground fill, a little ambient and the sun, no tone mapping
+export const hemi = new T.HemisphereLight(0xe8f8ff, 0x5a9a3a, 1.1);
+scene.add(hemi, new T.AmbientLight(0xffffff, 0.45));
 // a soft fill from the camera's side, so characters and pets always read clearly
 export const camFill = new T.DirectionalLight(0xffffff, 0.35);
-scene.add(camFill, camFill.target);
-export const sun = new T.DirectionalLight(0xfff4e0, 2.3);
+// (not in the scene: the top games use no fill light; the game still moves it, harmlessly)
+export const sun = new T.DirectionalLight(0xfff3e0, 1.5);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(1024, 1024);
 Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 400 });
 sun.shadow.bias = -0.0006;
 sun.shadow.normalBias = 0.05;
@@ -155,6 +152,13 @@ scene.add(sun, sun.target);
 export const UNIT = new T.BoxGeometry(1, 1, 1);
 // Neon is pushed above 1.0 so only it crosses the bloom threshold (fx.js)
 export const NEON_BOOST = 2.6;
+// Matte materials only: PBR settings (roughness, metal, normal maps, environment) are dropped
+const PBR_ONLY = ['roughness', 'metalness', 'roughnessMap', 'metalnessMap', 'normalMap', 'normalScale', 'normalMapType', 'envMap', 'envMapIntensity', 'clearcoat', 'clearcoatRoughness', 'sheen', 'sheenColor', 'sheenRoughness', 'ior', 'transmission', 'thickness', 'iridescence', 'specularIntensity', 'specularColor'];
+export function toLambert(p) {
+    const q = { ...(p || {}) };
+    for (const k of PBR_ONLY) delete q[k];
+    return new T.MeshLambertMaterial(q);
+}
 const matCache = new Map();
 export function mat(color, o) {
     o = o || {};
@@ -165,7 +169,7 @@ export function mat(color, o) {
         const rough = o.rough ?? 0.6, metal = o.metal || 0;
         m = o.neon ? new T.MeshBasicMaterial({ color })
             : rough >= 0.4 && metal <= 0.15 ? new T.MeshLambertMaterial({ color })
-                : new T.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
+                : toLambert({ color, roughness: rough, metalness: metal });
         if (o.neon) m.color.multiplyScalar(NEON_BOOST * (o.boost || 1));
         if (o.emissive) { m.emissive = new T.Color(o.emissive); m.emissiveIntensity = o.ei ?? 0.6; }
         if (o.opacity && o.opacity < 1) { m.transparent = true; m.opacity = o.opacity; m.depthWrite = false; }
@@ -181,7 +185,7 @@ export function glossyMat(o) {
     const coat = o.clearcoat || 0;
     for (const k of PHYSICAL_ONLY) delete o[k];
     if (coat && o.roughness !== undefined) o.roughness = Math.max(0.04, o.roughness * (1 - 0.35 * coat));
-    return new T.MeshStandardMaterial(o);
+    return toLambert(o);
 }
 export function texFrom(cv, repeat) {
     const t = new T.CanvasTexture(cv);

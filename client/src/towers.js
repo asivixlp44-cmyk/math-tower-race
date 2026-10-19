@@ -2,7 +2,7 @@
 // module stacks the blocks with the owner's block animation, in the owner's tower skin, and burns
 // and sinks a tower when its owner is eliminated. One InstancedMesh per tower.
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { T, scene, NEON_BOOST, lavaGlowY } from './engine.js';
+import { T, scene, NEON_BOOST, lavaGlowY, toLambert } from './engine.js';
 import { blockBurst, flame, smoke, sparkleColumn } from './fx.js';
 import { sfx } from './audio.js';
 import { CFG, towerById, towerColor, TOWERS } from '../../shared/config.js';
@@ -58,7 +58,7 @@ function makeMaterial(s) {
     } else {
         // matte skins use the cheap Lambert shading; glossy / metal ones need PBR
         const rough = s.rough ?? 0.7;
-        m = rough >= 0.4 && !s.metal ? new T.MeshLambertMaterial({ color: 0xffffff }) : new T.MeshStandardMaterial({ color: 0xffffff, roughness: rough, metalness: s.metal || 0 });
+        m = rough >= 0.4 && !s.metal ? new T.MeshLambertMaterial({ color: 0xffffff }) : toLambert({ color: 0xffffff, roughness: rough, metalness: s.metal || 0 });
         if (s.glow) { m.emissive = new T.Color(s.colors[0]); m.emissiveIntensity = s.glow; }
     }
     if (s.opacity) { m.transparent = true; m.opacity = s.opacity; }

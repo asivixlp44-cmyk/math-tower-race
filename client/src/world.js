@@ -7,8 +7,7 @@
 // Everything is built from code (textures are drawn on canvases).
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {
-    T, V3, scene, mat, texFrom, solids, prompts, tickers, solidBox, batchBox, batchGeo, flushBatches, billboard, buildRig, dancePoseRig, mergeChildren, glossyMat,
-} from './engine.js';
+    T, V3, scene, mat, texFrom, solids, prompts, tickers, solidBox, batchBox, batchGeo, flushBatches, billboard, buildRig, dancePoseRig, mergeChildren, glossyMat, toLambert } from './engine.js';
 import { S, actions } from './state.js';
 import { BLOCK, tintedTowerMaterial } from './towers.js';
 import {
@@ -280,7 +279,7 @@ function buildGround() {
     sea.holes.push(new T.Path([new T.Vector2(-h0, -h0), new T.Vector2(-h0, h0), new T.Vector2(h0, h0), new T.Vector2(h0, -h0)]));
     const seaGeo = new T.ShapeGeometry(sea);
     { const uv = seaGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 5000, uv.getY(i) / 5000); }
-    water = new T.Mesh(seaGeo, new T.MeshStandardMaterial({ color: 0x24c4e4, roughness: 0.12, metalness: 0.15, normalMap: ripple, normalScale: new T.Vector2(0.45, 0.45) }));
+    water = new T.Mesh(seaGeo, toLambert({ color: 0x24c4e4, roughness: 0.12, metalness: 0.15, normalMap: ripple, normalScale: new T.Vector2(0.45, 0.45) }));
     water.rotation.x = -Math.PI / 2; water.position.y = -6.4;
     ROOT.add(water);
     // far sandbars with palm trees
@@ -799,7 +798,7 @@ function buildVip() {
     const vipTex = canvasTex(256, 256, (x) => {
         for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) bevelRect(x, i * 128 + 2, j * 128 + 2, 124, 124, (i + j) % 2 ? '#ffd65a' : '#fff2c8', 8);
     }, true);
-    batchBox(new T.MeshStandardMaterial({ map: vipTex, roughness: 0.35, metalness: 0.15 }), cx, 0.15, cz, w, 0.3, d, { tile: 8 });
+    batchBox(toLambert({ map: vipTex, roughness: 0.35, metalness: 0.15 }), cx, 0.15, cz, w, 0.3, d, { tile: 8 });
     const wallM = mat(0xffcf3a, { rough: 0.45, metal: 0.12 }), trimM = mat(0xfff4d0, { rough: 0.4 });
     const H = 10;
     const wall = (x, z, sx, sz) => {
@@ -997,7 +996,7 @@ export function buildWorld() {
 
 export function updateWorld(dt, t, serverNow, cam) {
     for (const fn of tickers) fn(dt, t);
-    if (water) water.material.normalMap.offset.set(t * 0.004, t * 0.006);
+    if (water && water.material.normalMap) water.material.normalMap.offset.set(t * 0.004, t * 0.006);
     updateGems(t, serverNow);
     updateLod(dt, cam);
     for (const d of dancers) {

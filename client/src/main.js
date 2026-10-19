@@ -1,8 +1,7 @@
 import { Client } from '@colyseus/sdk';
 import {
     T, V3, $, canvas, scene, camera, sun, renderer, solids, prompts, camFill, billboard, buildRig, animRig, airPose, dancePoseRig,
-    floatText, updateEffects, lerpAngle, updateSky,
-} from './engine.js';
+    floatText, updateEffects, lerpAngle, updateSky, toLambert } from './engine.js';
 import { S, actions, net } from './state.js';
 import { initAudio, resumeAudio, audioDebug, startMusic, setTrack, sfx, setVolume, audioSuspended } from './audio.js';
 import * as BX from './bloxity.js';
@@ -451,8 +450,8 @@ function nukeStrike(m) {
     toast('☢️ ' + m.by + ' launched a NUKE!', '#c8ff2a');
     sfx('nukeLaunch');
     const missile = new T.Group();
-    const body = new T.Mesh(new T.CylinderGeometry(1.6, 1.6, 10, 16), new T.MeshStandardMaterial({ color: 0x4a5a4a, metalness: 0.5, roughness: 0.4 }));
-    const nose = new T.Mesh(new T.ConeGeometry(1.6, 3.4, 16), new T.MeshStandardMaterial({ color: 0xe8342a, roughness: 0.4 }));
+    const body = new T.Mesh(new T.CylinderGeometry(1.6, 1.6, 10, 16), toLambert({ color: 0x4a5a4a, metalness: 0.5, roughness: 0.4 }));
+    const nose = new T.Mesh(new T.ConeGeometry(1.6, 3.4, 16), toLambert({ color: 0xe8342a, roughness: 0.4 }));
     nose.position.y = -6.7; nose.rotation.x = Math.PI;
     missile.add(body, nose);
     for (let k = 0; k < 4; k++) { const fin = new T.Mesh(new T.BoxGeometry(0.3, 3, 2.6), body.material); fin.position.set(Math.cos(k * Math.PI / 2) * 1.6, 4, Math.sin(k * Math.PI / 2) * 1.6); fin.rotation.y = -k * Math.PI / 2; missile.add(fin); }
@@ -852,16 +851,19 @@ function update(dt) {
         else if (!P.onGround) airPose(u.body);
         else if (P.moving) animRig(u.body, P.animPhase, 0.85);
         else animRig(u.body, 0, 0);
-        if (localAvatar) localAvatar.update(dt, { moving: P.moving && P.onGround, air: !P.onGround, speed: CFG.walk, t, dance });
+        if (localAvatar) localAvatar.update(dt, { moving: P.moving && P.onGround, air: !P.onGround, vy: P.vel.y, speed: CFG.walk, t, dance });
         const stepN = Math.floor(P.animPhase / Math.PI);
         if (P.onGround && P.moving && stepN !== P.lastStepN) sfx('step');
         P.lastStepN = stepN;
         P.squashV += (1 - P.squash) * 180 * dt;
         P.squashV *= Math.exp(-12 * dt);
         P.squash = clamp(P.squash + P.squashV * dt, 0.75, 1.25);
-        rig.scale.set(1 / Math.sqrt(P.squash), P.squash, 1 / Math.sqrt(P.squash));
+        // the Bloxity avatar leans and crouches on landing by itself (animator.js): the whole-body
+        // lean and squash are for the blocky stand-in
+        const sq = localAvatar ? 1 : P.squash;
+        rig.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
         u.pivot.position.y = PIVOT + bounce * 0.5;
-        u.pivot.rotation.x = P.onGround && P.moving ? 0.12 : 0;
+        u.pivot.rotation.x = P.onGround && P.moving && !localAvatar ? 0.12 : 0;
         if (myBurn > 0) { myBurn -= dt; if (Math.random() < dt * 30) flame(P.pos.clone().add(new V3(0, 2.5, 0)), 2, 1.8); if (Math.random() < dt * 8) smoke(P.pos.clone().add(new V3(0, 4, 0)), 2); }
         if (myPets) {
             myPets.set(equippedPetDefs());
